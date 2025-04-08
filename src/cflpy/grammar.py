@@ -145,6 +145,46 @@ class ChomskyNormalFormGrammar(CFGrammar):
                     raise ValueError(f"Production rule {lhs} -> {rhs} is not in Chomsky Normal Form: Unit production.")
         return
 
+    def get_cyk_table(self, sequence: Sequence) -> list[list[dict[Variable, bool]]]:
+        """
+        CYKアルゴリズムのテーブルを生成
+
+        Args:
+            sequence: 判定対象の文字列
+
+        Returns:
+            list[list[dict[Variable, bool]]]: CYKテーブル
+        """
+        if not all(isinstance(symbol, Terminal) for symbol in sequence):
+            raise ValueError("All symbols in the sequence must be terminals.")
+
+        n = len(sequence)
+        r = len(self.variables)
+
+        cyk_table = [[{v: False for v in self.variables} for _ in range(n)] for _ in range(n)]
+
+        # Initialize the table with terminal symbols production rules
+        for i in range(n):
+            for lhs, rhs in self.production_rules.items():
+                cyk_table[i][i][lhs] = Sequence([sequence[i]]) in rhs
+
+        for length in range(2, n + 1):
+            for i in range(n - length + 1):
+                j = i + length - 1
+                for k in range(i, j):
+                    for lhs, rhs in self.production_rules.items():
+                        for seq in rhs:
+                            if len(seq) == 1:
+                                continue
+                            if cyk_table[i][k][seq[0]] and cyk_table[k + 1][j][seq[1]]:
+                                cyk_table[i][j][lhs] = True
+                                break
+                        if cyk_table[i][j][lhs] is True:
+                            break
+                    if cyk_table[i][j][lhs] is True:
+                        break
+        return cyk_table
+
     def is_member_seq(self, sequence: Sequence) -> bool:
         """
         CYKアルゴリズムで文字列が言語に含まれるか判定
@@ -155,39 +195,11 @@ class ChomskyNormalFormGrammar(CFGrammar):
         Returns:
             bool: 言語に含まれるかどうか
         """
-        # sequence の要素がすべて終端記号であることを確認
-        if not all(isinstance(symbol, Terminal) for symbol in sequence):
-            raise ValueError("All symbols in the sequence must be terminals.")
-
-        n = len(sequence)
-        if n == 0:
-            return False
-
-        r = len(self.variables)
-
-        cyk_slice = {v: False for v in self.variables}
-        cyk_col = [cyk_slice.copy() for _ in range(n)]
-        cyk_table = [cyk_col.copy() for _ in range(n)]
-
-        # Initialize the table with terminal symbols production rules
-        for i in range(n):
-            for lhs, rhs_set in self.production_rules.items():
-                cyk_table[i][i][lhs] = Sequence([sequence[i]]) in rhs_set
-
-        for length in range(2, n + 1):  # 部分列の長さ
-            for i in range(n - length + 1):
-                j = i + length - 1  # 部分列 tokens[i]～tokens[j]
-                # 部分列を2つに分割するすべての位置 k (i ≤ k < j) について検討
-                for k in range(i, j):
-                    for lhs, rhs_set in self.production_rules.items():
-                        for rhs in rhs_set:
-                            if len(rhs) == 1:
-                                continue
-                            if cyk_table[i][k][rhs[0]] and cyk_table[k + 1][j][rhs[1]]:
-                                cyk_table[i][j][lhs] = True
+        # cyk_tableを生成
+        cyk_table = self.get_cyk_table(sequence)
 
         # 開始記号が生成するかどうかを確認
-        return cyk_table[0][n - 1][self.start_symbol]
+        return cyk_table[0][-1][self.start_symbol]
 
     def is_member(self, string: str) -> bool:
         """
@@ -206,3 +218,87 @@ class ChomskyNormalFormGrammar(CFGrammar):
             if t not in self.terminals:
                 raise ValueError(f"Terminal {t} is not in the grammar's terminals.\n Given: {string}")
         return self.is_member_seq(sequence)
+
+    def get_generation_history(self, seq: Sequence) -> dict:
+        """
+        CYKアルゴリズムを用いてある文字列の生成履歴を取得
+
+        例えば，
+        S -> A B
+        A -> a
+        B -> C D
+        C -> c
+        D -> d
+        と生成される文字列 a c d の生成履歴は以下のようになる．
+        {
+            Variable("S"): {
+                Variable("A"): Terminal("a"),
+                Variable("B"): {
+                    Variable("C"): Terminal("c"),
+                    Variable("D"): Terminal("d")
+                }
+            }
+        }
+
+        Args:
+            seq (Sequence): 生成履歴を取得する文字列を表すSequenceオブジェクト
+
+        Returns:
+            dict: 生成履歴を表す辞書
+        """
+        cyk_table = self.get_cyk_table(seq)
+        n = len(seq)
+
+        if n == 0:
+            raise ValueError("Empty sequence")
+
+        # 開始記号が生成できない場合はNoneを返す
+        if not cyk_table[0][n - 1][self.start_symbol]:
+            return None
+
+        # バックトラッキングにより解析木を再構築する
+        return self._build_parse_tree(cyk_table, 0, n - 1, self.start_symbol, seq)
+
+    def _build_parse_tree(
+        self, cyk_table: list[list[dict[Variable, bool]]], start: int, end: int, variable: Variable, seq: Sequence
+    ) -> dict:
+        """
+        CYKテーブルから解析木を再構築する
+
+        Args:
+            cyk_table: CYKテーブル
+            start: 部分文字列の開始位置
+            end: 部分文字列の終了位置
+            variable: 非終端記号
+            seq: 元の文字列
+
+        Returns:
+            dict: 解析木を表す辞書
+        """
+        # 長さ1の場合は終端記号に対応
+        if start == end:
+            for rhs in self.production_rules[variable]:
+                if len(rhs) == 1 and rhs[0] == seq[start]:
+                    return seq[start]
+
+        # 長さ2以上の場合は分割点を探す
+        for k in range(start, end):
+            for rhs in self.production_rules[variable]:
+                if len(rhs) != 2:
+                    continue
+
+                left_var, right_var = rhs[0], rhs[1]
+
+                if (
+                    isinstance(left_var, Variable)
+                    and isinstance(right_var, Variable)
+                    and cyk_table[start][k][left_var]
+                    and cyk_table[k + 1][end][right_var]
+                ):
+                    left_tree = self._build_parse_tree(cyk_table, start, k, left_var, seq)
+                    right_tree = self._build_parse_tree(cyk_table, k + 1, end, right_var, seq)
+
+                    return {variable: {left_var: left_tree, right_var: right_tree}}
+
+        # ここに到達するのは理論上はあり得ない（CYKテーブルが正しければ）
+        raise ValueError(f"Could not reconstruct parse tree for {variable} from {start} to {end}")

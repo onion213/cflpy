@@ -29,32 +29,15 @@ def to_chomsky_normal_form(
 
     # Step 1: 開始記号の処理
     variables, start_symbol, production_rules = step1_start_symbol(variables, start_symbol, production_rules)
-    print("Step 1:")
-    print("Variables:", variables)
-    print("Start Symbol:", start_symbol)
-    print("Production Rules:", production_rules)
-    print()
 
     # Step 2: ε-規則の除去
     variables, start_symbol, production_rules = step2_remove_epsilon(variables, start_symbol, production_rules)
-    print(f"Step 2:")
-    print("Variables:", variables)
-    print("Start Symbol:", start_symbol)
-    print("Production Rules:", production_rules)
-    print()
 
     # Step 3: 単位規則の除去
     production_rules = step3_remove_unit(production_rules)
-    print(f"Step 3:")
-    print("Production Rules:", production_rules)
-    print()
 
     # Step 4: 長い規則の分解
     production_rules, variables = step4_decompose_long_productions(production_rules, variables, terminals)
-    print(f"Step 4:")
-    print("Production Rules:", production_rules)
-    print("Variables:", variables)
-    print()
 
     # Step 5: 終端記号の処理
     production_rules, variables = step5_remove_terminal_in_2_term_rule(production_rules, variables, terminals)

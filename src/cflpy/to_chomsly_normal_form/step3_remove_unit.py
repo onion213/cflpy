@@ -1,47 +1,39 @@
 from cflpy.core import ProductionRuleRHS, ProductionRules, Sequence, Variable
 
 
-def find_unit_productions(production_rules: ProductionRules) -> tuple[dict[Variable, set[Variable]], ProductionRules]:
-    """単位規則を見つける
-    単位規則とは、A -> Bの形を持つ生成規則であり、AとBは非終端記号である。
+def find_unit_pairs(production_rules: ProductionRules) -> dict[Variable, set[Variable]]:
+    """単位ペアを見つける
+    単位ペアとは、2つの非終端記号のペア(A, B)であり、1つ以上の生成規則を介して A から Bに遷移できるようなものを指す。
+    特に、全ての非終端記号 A について (A, A) は単位ペアである。
 
     Args:
-        productions (dict): 生成規則 {非終端: {[右辺の記号...], ...}}
+        productions (ProductionRules): 生成規則
 
     Returns:
-        dict: 単位規則 {非終端: [非終端...]}
-        dict: 生成規則 {非終端: {[右辺の記号...], ...}} 単位規則を除去したもの
+        dict[Variable, set[Variable]]: 単位ペア {非終端: [非終端...]}
     """
-    # 単位規則を見つける
-    # 単位規則を除去した生成規則を作成
-    new_production_rules = ProductionRules()
     unit_production_pairs: dict[Variable, set[Variable]] = {}
-    for lhs, rhs_set in production_rules.items():
-        for rhs in rhs_set:
-            if len(rhs) == 1 and isinstance(rhs[0], Variable):  # 単位規則の場合
-                if lhs not in unit_production_pairs.keys():
-                    unit_production_pairs[lhs] = set()
-                unit_production_pairs[lhs].add(rhs[0])
-            else:  # 単位規則でない場合: new_production_rulesに追加
-                if lhs not in new_production_rules.keys():
-                    new_production_rules[lhs] = ProductionRuleRHS()
-                new_production_rules[lhs].add(rhs)
+    for lhs, rhs in production_rules.items():
+        if lhs not in unit_production_pairs.keys():
+            unit_production_pairs[lhs] = set()
+        for seq in rhs:
+            if len(seq) == 1 and isinstance(seq[0], Variable):  # 単位規則の場合
+                unit_production_pairs[lhs].add(seq[0])
 
     # 連鎖する単位規則について、すべての非終端記号を追加
     changed = True
     while changed:
         changed = False
-        for lhs, rhs_set in unit_production_pairs.items():
+        for lhs, mid_set in unit_production_pairs.items():
             to_be_extended: set[Variable] = set()
-            for rhs in rhs_set:
-                if rhs in unit_production_pairs.keys():
-                    to_be_extended.update(unit_production_pairs[rhs])
+            for mid in mid_set:
+                if mid in unit_production_pairs.keys():
+                    to_be_extended.update(unit_production_pairs[mid])
             original_length = len(unit_production_pairs[lhs])
             unit_production_pairs[lhs].update(to_be_extended)
             if len(unit_production_pairs[lhs]) > original_length:
                 changed = True
-
-    return unit_production_pairs, new_production_rules
+    return unit_production_pairs
 
 
 def step3_remove_unit(production_rules: ProductionRules) -> ProductionRules:
@@ -63,12 +55,19 @@ def step3_remove_unit(production_rules: ProductionRules) -> ProductionRules:
     """
 
     # 単位規則を見つける
-    unit_production_rules, new_production_rules = find_unit_productions(production_rules)
+    unit_production_rules = find_unit_pairs(production_rules)
 
-    # 単位規則を除去する
-    for lhs, rhs_set in unit_production_rules.items():
-        for rhs in rhs_set:
-            if rhs in new_production_rules.keys():
-                new_production_rules[lhs].update(new_production_rules[rhs])
+    # 単位規則を介した変換規則を追加する
+    new_production_rules = production_rules.copy()
+    for lhs, mid_set in unit_production_rules.items():
+        for mid in mid_set:
+            if mid in production_rules.keys():
+                for seq in production_rules[mid]:
+                    new_production_rules[lhs].add(seq)
 
+    # 単位規則を削除する
+    for lhs, rhs in new_production_rules.items():
+        new_production_rules[lhs] = ProductionRuleRHS(
+            {seq for seq in rhs if len(seq) != 1 or not isinstance(seq[0], Variable)}
+        )
     return new_production_rules

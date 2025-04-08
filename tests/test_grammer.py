@@ -176,3 +176,32 @@ class TestChomskyNormalFormGrammar:
         assert grammar.is_member("a b") is True
         assert grammar.is_member("a") is False
         assert grammar.is_member("b a") is False
+
+    def test_get_cyk_table(self):
+        """CYKテーブル生成テスト"""
+        # Arrange
+        S = Variable("S")
+        A = Variable("A")
+        B = Variable("B")
+        variables = {S, A, B}
+        a = Terminal("a")
+        b = Terminal("b")
+        terminals = {a, b}
+        production_rules = ProductionRules(
+            {
+                S: ProductionRuleRHS({Sequence([A, B])}),
+                A: ProductionRuleRHS({Sequence([a])}),
+                B: ProductionRuleRHS({Sequence([b])}),
+            }
+        )
+        grammar = ChomskyNormalFormGrammar(variables, terminals, S, production_rules)
+        sequence = Sequence([a, b])
+
+        # Act
+        cyk_table = grammar.get_cyk_table(sequence)
+
+        # Assert
+        assert cyk_table[0][0] == {A: True, B: False, S: False}  # aを生成するのはAだけ
+        assert cyk_table[0][1] == {A: False, B: False, S: True}  # abを生成するのはSだけ
+        assert cyk_table[1][0] == {A: False, B: False, S: False}  # i > j の時は空集合
+        assert cyk_table[1][1] == {A: False, B: True, S: False}  # bを生成するのはBだけ

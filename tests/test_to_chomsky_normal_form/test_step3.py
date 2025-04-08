@@ -1,7 +1,7 @@
 import pytest
 
 from cflpy.core import ProductionRuleRHS, ProductionRules, Sequence, Terminal, Variable
-from cflpy.to_chomsly_normal_form.step3_remove_unit import find_unit_productions, step3_remove_unit
+from cflpy.to_chomsly_normal_form.step3_remove_unit import find_unit_pairs, step3_remove_unit
 
 
 class TestFindUnitProductions:
@@ -42,17 +42,14 @@ class TestFindUnitProductions:
             ),
         ],
     )
-    def test_find_unit_productions(
-        self, production_rules, expected_unit_production_pairs, expected_new_production_rules
-    ):
+    def test_find_unit_pairs(self, production_rules, expected_unit_production_pairs, expected_new_production_rules):
         # Arrange
 
         # Act
-        unit_production_pairs, new_production_rules = find_unit_productions(production_rules)
+        unit_production_pairs = find_unit_pairs(production_rules)
 
         # Assert
         assert unit_production_pairs == expected_unit_production_pairs
-        assert new_production_rules == expected_new_production_rules
 
     @pytest.mark.parametrize(
         "production_rules, expected_new_production_rules",
