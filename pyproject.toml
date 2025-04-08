@@ -1,0 +1,44 @@
+[project]
+name = "cflpy"
+version = "0.1.0"
+description = "A Python package for working with context-free grammars and languages."
+authors = [{ name = "onion" }]
+readme = "README.md"
+requires-python = ">= 3.12"
+dependencies = [
+    "pydantic>=2.11.2",
+    "tqdm>=4.67.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cflpy"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 119
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.ruff.lint]
+select = ["I"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["cflpy"]
+
+[tool.pytest.ini_options]
+addopts = ["--import-mode=importlib"]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.2.0",
+    "pytest>=8.3.5",
+    "pytest-cov>=6.1.1",
+]
