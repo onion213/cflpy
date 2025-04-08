@@ -5,7 +5,6 @@ import string
 
 import tqdm
 
-from cflpy.grammar import CFGrammar
 from cflpy.parser import CFGParser
 
 

@@ -54,7 +54,7 @@ class CFGrammar:
             "is_member method is not implemented for this grammar. Use ChomskyNormalFormGrammar instead."
         )
 
-    def generate(self) -> Sequence:
+    def generate(self, max_depth: int = -1) -> Sequence:
         """
         文法から文字列を生成
 
@@ -64,8 +64,11 @@ class CFGrammar:
         Returns:
             Sequence: 生成された文字列
         """
+        counter = 0
         sequence = Sequence([self.start_symbol])
         while any(isinstance(symbol, Variable) for symbol in sequence):
+            if max_depth > 0 and counter >= max_depth:
+                return sequence
             for i, symbol in enumerate(sequence):
                 if isinstance(symbol, Variable):
                     # 生成規則をランダムに選択
@@ -73,21 +76,22 @@ class CFGrammar:
                     new_symbols = production_rule_rhs.get_random()
                     # sequence = sequence[:i] + new_symbols + sequence[i + 1:]
                     sequence = Sequence(sequence.symbols[:i] + new_symbols.symbols + sequence.symbols[i + 1 :])
+                    counter += 1
                     break
 
         return sequence
 
-    def generate_string(self) -> str:
+    def generate_string(self, max_depth: int = -1) -> str:
         """
         文法から文字列を生成
 
         Returns:
             str: 生成された文字列
         """
-        sequence = self.generate()
+        sequence = self.generate(max_depth)
         return " ".join(str(symbol) for symbol in sequence)
 
-    def generate_strings(self, num: int) -> list[str]:
+    def generate_strings(self, num: int, max_depth: int = -1) -> list[str]:
         """
         文法から文字列を生成
 
@@ -99,7 +103,7 @@ class CFGrammar:
         """
         if num <= 0:
             raise ValueError("num must be greater than 0")
-        return [self.generate_string() for _ in range(num)]
+        return [self.generate_string(max_depth) for _ in range(num)]
 
 
 class ChomskyNormalFormGrammar(CFGrammar):
