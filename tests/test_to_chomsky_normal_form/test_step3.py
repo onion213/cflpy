@@ -6,7 +6,7 @@ from cflpy.to_chomsly_normal_form.step3_remove_unit import find_unit_pairs, step
 
 class TestFindUnitProductions:
     @pytest.mark.parametrize(
-        "production_rules, expected_unit_production_pairs, expected_new_production_rules",
+        "production_rules, expected_unit_production_pairs",
         [
             (
                 ProductionRules(
@@ -27,22 +27,12 @@ class TestFindUnitProductions:
                 {
                     Variable("S"): {Variable("B"), Variable("A")},
                     Variable("A"): {Variable("B")},
+                    Variable("B"): set(),
                 },
-                ProductionRules(
-                    {
-                        Variable("S"): ProductionRuleRHS(
-                            {Sequence([Variable("A"), Variable("B")]), Sequence([Variable("a")])}
-                        ),
-                        Variable("A"): ProductionRuleRHS({Sequence([Variable("a")])}),
-                        Variable("B"): ProductionRuleRHS(
-                            {Sequence([Variable("b"), Variable("B")]), Sequence([Variable("b")])}
-                        ),
-                    }
-                ),
             ),
         ],
     )
-    def test_find_unit_pairs(self, production_rules, expected_unit_production_pairs, expected_new_production_rules):
+    def test_find_unit_pairs(self, production_rules, expected_unit_production_pairs):
         # Arrange
 
         # Act
