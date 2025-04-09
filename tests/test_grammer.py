@@ -205,3 +205,44 @@ class TestChomskyNormalFormGrammar:
         assert cyk_table[0][1] == {A: False, B: False, S: True}  # abを生成するのはSだけ
         assert cyk_table[1][0] == {A: False, B: False, S: False}  # i > j の時は空集合
         assert cyk_table[1][1] == {A: False, B: True, S: False}  # bを生成するのはBだけ
+
+    def test_get_generation_history(self):
+        """生成履歴取得テスト"""
+        # Arrange
+        S = Variable("S")
+        A = Variable("A")
+        B = Variable("B")
+        C = Variable("C")
+        D = Variable("D")
+        E = Variable("E")
+        variables = {S, A, B, C, D, E}
+        a = Terminal("a")
+        b = Terminal("b")
+        c = Terminal("c")
+        d = Terminal("d")
+        e = Terminal("e")
+        terminals = {a, b, c, d, e}
+        production_rules = ProductionRules(
+            {
+                S: ProductionRuleRHS({Sequence([A, B]), Sequence([C, D])}),
+                A: ProductionRuleRHS({Sequence([a])}),
+                B: ProductionRuleRHS({Sequence([b])}),
+                C: ProductionRuleRHS({Sequence([c])}),
+                D: ProductionRuleRHS({Sequence([d]), Sequence([D, E])}),
+                E: ProductionRuleRHS({Sequence([e])}),
+            }
+        )
+        grammar = ChomskyNormalFormGrammar(variables, terminals, S, production_rules)
+        sequence1 = Sequence([a, b])
+        sequence2 = Sequence([c, d, e, e])
+
+        expected_history1 = {S: {A: a, B: b}}
+        expected_history2 = {S: {C: c, D: {D: {D: d, E: e}, E: e}}}
+
+        # Act
+        history1 = grammar.get_generation_history(sequence1)
+        history2 = grammar.get_generation_history(sequence2)
+
+        # Assert
+        assert history1 == expected_history1
+        assert history2 == expected_history2

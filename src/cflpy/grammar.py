@@ -261,11 +261,11 @@ class ChomskyNormalFormGrammar(CFGrammar):
             return None
 
         # バックトラッキングにより解析木を再構築する
-        return self._build_parse_tree(cyk_table, 0, n - 1, self.start_symbol, seq)
+        return {self.start_symbol: self._build_parse_tree(cyk_table, 0, n - 1, self.start_symbol, seq)}
 
     def _build_parse_tree(
         self, cyk_table: list[list[dict[Variable, bool]]], start: int, end: int, variable: Variable, seq: Sequence
-    ) -> dict:
+    ) -> dict | Terminal:
         """
         CYKテーブルから解析木を再構築する
 
@@ -283,7 +283,9 @@ class ChomskyNormalFormGrammar(CFGrammar):
         if start == end:
             for rhs in self.production_rules[variable]:
                 if len(rhs) == 1 and rhs[0] == seq[start]:
+                    print(f"Conversion: {variable} -> {seq[start]}")
                     return seq[start]
+            raise ValueError(f"Could not reconstruct parse tree for {variable} from {start} to {end}")
 
         # 長さ2以上の場合は分割点を探す
         for k in range(start, end):
@@ -302,7 +304,8 @@ class ChomskyNormalFormGrammar(CFGrammar):
                     left_tree = self._build_parse_tree(cyk_table, start, k, left_var, seq)
                     right_tree = self._build_parse_tree(cyk_table, k + 1, end, right_var, seq)
 
-                    return {variable: {left_var: left_tree, right_var: right_tree}}
+                    print(f"Conversion: {variable} -> {left_var} {right_var}")
+                    return {left_var: left_tree, right_var: right_tree}
 
         # ここに到達するのは理論上はあり得ない（CYKテーブルが正しければ）
         raise ValueError(f"Could not reconstruct parse tree for {variable} from {start} to {end}")
